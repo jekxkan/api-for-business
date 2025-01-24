@@ -9,3 +9,6 @@ class User(BaseModel):
     login: str
     password: str
     email: Optional[EmailStr] = None
+    age: int
+    gender: str
+    city: str

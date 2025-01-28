@@ -1,7 +1,13 @@
 from typing import Annotated
+
 from fastapi import Depends
 from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
 from .config import get_settings
 
 settings = get_settings()
@@ -15,6 +21,7 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False, expire_on_commit=False, autoflush=False, bind=engine
 )
 
+
 async def get_session() -> AsyncSession:
     """
     Асинхронная функция, которая подключается к сессии
@@ -24,5 +31,6 @@ async def get_session() -> AsyncSession:
             yield session
         finally:
             await session.close()
+
 
 DBSession = Annotated[AsyncSessionLocal, Depends(get_session)]

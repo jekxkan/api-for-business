@@ -1,11 +1,25 @@
-from pydantic_settings import BaseSettings
+import os
 from functools import lru_cache
+
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+
+load_dotenv()
+
+user = os.getenv("DATABASE_USER")
+password = os.getenv("DATABASE_PASSWORD")
+db_name = os.getenv("DATABASE_NAME")
+
 
 class Settings(BaseSettings):
     sqlalchemy_database_url: str = (
-        "postgresql+asyncpg://user:zxcvb@localhost:5432/users_info"
+        f"postgresql+asyncpg://{user}:{password}@db:5432/{db_name}"
     )
+
 
 @lru_cache()
 def get_settings() -> Settings:
+    """
+    Функция получает настройки из класса Settings
+    """
     return Settings()

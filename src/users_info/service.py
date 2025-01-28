@@ -1,63 +1,202 @@
 from typing import Optional
 
-from sqlalchemy import func, select, desc
+from sqlalchemy import desc, func, select
+
 from src.database import DBSession
+from src.exceptions import DatabaseError
 from src.users_info.models import UserInfo
 
-async def create_user_info(
-    login: str, password: str, email: str, age: int, gender: str, city: str, session = DBSession()
-) -> UserInfo:
-    """Асинхронная функция, которая создает новую запись в бд
 
-    Args:
-        session[DBSession]: экземпляр DBSession
-        login[str]: логин пользователя
-        password[str]: пароль
-        email[str]: почта
+class DBService:
+    def __init__(self):
+        self.session = DBSession()
 
-    Returns:
-        new_record[User]: запись, добавленная в бд
-    """
-    new_record = UserInfo(login=login, password=password, email=email, age=age, male=gender, city=city)
-    session.add(new_record)
-    await session.commit()
-    return new_record
+    async def create_user_info(
+        self,
+        login: str,
+        password: str,
+        email: Optional[str],
+        age: int,
+        gender: str,
+        city: str,
+    ) -> UserInfo:
+        """
+        Асинхронная функция, которая создает новую запись в бд
 
-async def get_average_middle_age(session = DBSession()) -> int:
-    stmt = select(func.avg(UserInfo.age))
-    result = await session.execute(stmt)
-    average_age = int(result.scalar())
-    return average_age
+        Args:
+            login[str]: логин пользователя
+            password[str]: пароль
+            email [Optional[str]]: почта
+            age [int]: возраст
+            gender [str]: пол
+            city [str]: город проживания
 
-async def get_gender_percentage(session = DBSession()) -> tuple:
-    stmt = select(func.count(UserInfo.male))
-    stmt_female_gender = (select(func.count())
-                          .where(UserInfo.male == 'female'))
-    result = await session.execute(stmt)
-    result_female_gender = await session.execute(stmt_female_gender)
-    female_percentage = (result_female_gender.scalar() / result.scalar()) * 100
-    male_percentage = 100 - female_percentage
-    return (female_percentage, male_percentage)
+        Returns:
+            new_record[UserInfo]: запись, добавленная в бд
 
-async def get_main_cities(session = DBSession()) -> list:
-    stmt = (
-        select(UserInfo.city)
-        .group_by(UserInfo.city)
-        .order_by(desc(func.count(UserInfo.city)))
-        .limit(3)
-    )
-    result = await session.execute(stmt)
-    return list(result.scalars())
+        Raises:
+            DatabaseError: если произошла ошибка при создании записи
+        """
+        try:
+            new_record = UserInfo(
+                login=login,
+                password=password,
+                email=email,
+                age=age,
+                male=gender,
+                city=city,
+            )
+            self.session.add(new_record)
+            await self.session.commit()
+            return new_record
+        except Exception as e:
+            raise DatabaseError(f"Ошибка при создании записи в бд: {e}")
 
-async def get_without_email(session = DBSession()) -> tuple|str:
-    stmt = (select(func.count())
-            .where(UserInfo.email == None))
-    count_all_stmt = (select(func.count(UserInfo.login)))
-    result = (await session.execute(stmt)).scalar()
-    count_all_stmt_result = (await session.execute(count_all_stmt)).scalar()
-    if result != 0:
-        percentage_users_without_email = (result / count_all_stmt_result) * 100
-        return (result, int(percentage_users_without_email))
-    else:
-        return 'У всех пользователей указана почта'
+    async def get_average_age(self) -> int:
+        """
+        Асинхронная функция, которая возвращает средний возраст пользователей
 
+        Returns:
+            average_age [int]: средний возраст пользователей
+
+        Raises:
+            DatabaseError: если произошла ошибка при получении
+            среднего возраста
+        """
+        try:
+            stmt = select(func.avg(UserInfo.age))
+            result = await self.session.execute(stmt)
+            average_age = int(result.scalar())
+            return average_age
+        except Exception as e:
+            raise DatabaseError(
+                f"Ошибка при получении среднего возраста пользователей: {e}"
+            )
+
+    async def get_gender_percentage(self) -> tuple[float, float]:
+        """
+        Асинхронная функция, которая возвращает процентное соотношение
+        полов пользователей
+
+        Returns:
+            tuple[float, float]: процентное соотношение пользователей женского
+            и мужского пола
+
+        Raises:
+            DatabaseError: если произошла ошибка при вычислении
+            соотношения полов
+        """
+        try:
+            stmt = select(func.count(UserInfo.male))
+            stmt_female_gender = select(func.count()).where(
+                UserInfo.male == "female"
+            )
+            result = await self.session.execute(stmt)
+            result_female_gender = await self.session.execute(
+                stmt_female_gender
+            )
+            female_percentage = (
+                result_female_gender.scalar() / result.scalar()
+            ) * 100
+            male_percentage = 100 - female_percentage
+            return (round(female_percentage, 1), round(male_percentage, 1))
+        except Exception as e:
+            raise DatabaseError(
+                f"Ошибка при вычислении соотношения полов пользователей: {e}"
+            )
+
+    async def get_main_cities(self) -> list[str]:
+        """
+        Асинхронная функция, которая возвращает список основных городов
+        проживания пользователей
+
+        Returns:
+            list[str]: список основных городов проживания пользователей
+
+        Raises:
+            DatabaseError: если произошла ошибка при получении основных городов
+        """
+        try:
+            stmt = (
+                select(UserInfo.city)
+                .group_by(UserInfo.city)
+                .order_by(desc(func.count(UserInfo.city)))
+                .limit(3)
+            )
+            result = await self.session.execute(stmt)
+            return list(result.scalars())
+        except Exception as e:
+            raise DatabaseError(
+                f"""Ошибка при получении основных городов
+                проживания пользователей: {e}"""
+            )
+
+    async def get_without_email(self) -> tuple[int, int] | str:
+        """
+        Асинхронная функция, которая возвращает количество пользователей,
+        не оставивших email, и их процентное соотношение
+
+        Returns:
+            Tuple[int, int] | str: количество пользователей без email
+            и процентное соотношение, или сообщение,
+            если все пользователи указали email
+
+        Raises:
+            DatabaseError: если произошла ошибка при получении
+            количества пользователей без email
+        """
+        try:
+            stmt = select(func.count()).where(UserInfo.email == None)
+            count_all_stmt = select(func.count(UserInfo.login))
+            result = (await self.session.execute(stmt)).scalar()
+            count_all_stmt_result = (
+                await self.session.execute(count_all_stmt)
+            ).scalar()
+            if result != 0:
+                percentage_users_without_email = (
+                    result / count_all_stmt_result
+                ) * 100
+                return (result, int(percentage_users_without_email))
+            else:
+                return "У всех пользователей указана почта"
+        except Exception as e:
+            raise DatabaseError(
+                f"""Ошибка при получении количества пользователей, 
+                не оставивших email: {e}"""
+            )
+
+    async def get_the_most_popular_day_of_week(self) -> str:
+        """
+        Асинхронная функция, которая возвращает день недели
+        с наибольшим количеством регистраций
+
+        Returns:
+            str: день недели с наибольшим количеством регистраций
+
+        Raises:
+            DatabaseError: если произошла ошибка при получении дня недели
+            с наибольшим количеством регистраций
+        """
+        days_of_week = {
+            0: "Воскресенье",
+            1: "Понедельник",
+            2: "Вторник",
+            3: "Среда",
+            4: "Четверг",
+            5: "Пятница",
+            6: "Суббота",
+        }
+        try:
+            stmt = select(
+                func.extract("dow", UserInfo.registrated_at).label(
+                    "day_of_week"
+                ),
+            )
+            result = await self.session.execute(stmt)
+            day_of_week = days_of_week[result.scalar()]
+            return day_of_week
+        except Exception as e:
+            raise DatabaseError(
+                f"""Ошибка при получении дня недели 
+                с наибольшим количеством регистраций: {e}"""
+            )

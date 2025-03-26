@@ -58,17 +58,12 @@ async def get_the_most_popular_day_of_week(
 
 @router.post("/regist-user", response_model=User)
 async def create_user(user: User):
-    try:
-        await db_service.create_user_info(
-            user.login,
-            user.password,
-            user.email,
-            user.age,
-            user.gender,
-            user.city,
-        )
-        return user
-    except Exception as e:
-        raise HTTPException(
-            status_code=422, detail="Ошибка валидации данных: " + str(e)
-        )
+    await db_service.create_user_info(
+        user.login,
+        user.password,
+        user.email,
+        user.age,
+        user.gender,
+        user.city,
+    )
+    return user

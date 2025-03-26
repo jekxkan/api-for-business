@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "api-with-db"
+name = "api-for-business"
 version = "0.1.0"
 description = ""
 authors = ["jekxkan <smirnova.eyu@mail.ru>"]

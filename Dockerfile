@@ -20,5 +20,3 @@ RUN POETRY_VIRTUALENVS_CREATE=false poetry install
 EXPOSE 8001
 
 COPY . .
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8001"]

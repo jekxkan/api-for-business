@@ -19,9 +19,3 @@ class User(BaseModel):
     age: int = Field(ge=18)
     gender: str = Field(min_length=1, max_length=10)
     city: str = Field(min_length=1, max_length=50)
-
-    @validator("age")
-    def validate_age(cls, value):
-        if value < 18:
-            raise ValueError("Минимальный возраст 18 лет")
-        return value

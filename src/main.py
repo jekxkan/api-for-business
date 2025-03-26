@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-from src.router import router
+from src.routes import router
 
 app = FastAPI()
 app.include_router(router)

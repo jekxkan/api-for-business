@@ -1,45 +1,36 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter
 
-from src.dependencies import Dependencies
 from src.schemas import User
 from src.users_info.service import DBService
 
 router = APIRouter()
-dependence = Dependencies()
 db_service = DBService()
 
 
 @router.get("/average-age", response_model=int)
-async def get_average_age(
-    average_age: int = Depends(dependence.get_users_average_age),
-):
+async def get_average_age():
+    average_age = await db_service.get_average_age()
     return average_age
 
 
 @router.get("/gender-percentage", response_model=str)
-async def get_gender_percentage(
-    gender_percentage: tuple[float, float] = Depends(
-        dependence.get_users_gender_percentage
-    ),
-):
+async def get_gender_percentage():
+    gender_percentage = db_service.get_gender_percentage()
     return (
         f"{gender_percentage[0]}% - девушки, {gender_percentage[1]}% - мужчины"
     )
 
 
 @router.get("/main-cities", response_model=str)
-async def get_main_cities(
-    main_cities: str = Depends(dependence.get_users_main_cities),
-):
-    return main_cities
+async def get_main_cities():
+    main_cities = await db_service.get_main_cities()
+    main_cities_formated = ", ".join(main_cities)
+    return main_cities_formated
 
 
 @router.get("/users-without-email", response_model=tuple | str)
-async def get_without_email(
-    users_without_email: tuple | str = Depends(
-        dependence.get_users_without_email
-    ),
-):
+async def get_without_email():
+    users_without_email = await db_service.get_without_email()
     if type(users_without_email) is tuple:
         answer=f"{users_without_email[0]}, от общей массы составляет {users_without_email[1]}%"
         return answer
@@ -48,11 +39,9 @@ async def get_without_email(
 
 
 @router.get("/users-the-most-popular-day-of-week", response_model=str)
-async def get_the_most_popular_day_of_week(
-    users_the_most_popular_day_of_week: str = Depends(
-        dependence.get_users_the_most_popular_day_of_week
-    ),
-):
+async def get_the_most_popular_day_of_week():
+    users_the_most_popular_day_of_week = await (db_service.
+                                                get_the_most_popular_day_of_week())
     return users_the_most_popular_day_of_week
 
 
